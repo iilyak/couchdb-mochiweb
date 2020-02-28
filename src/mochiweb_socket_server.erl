@@ -11,7 +11,7 @@
 
 -export([start/1, start_link/1, stop/1]).
 -export([init/1, handle_call/3, handle_cast/2, terminate/2, code_change/3,
-         handle_info/2]).
+         handle_info/2, format_status/2]).
 -export([get/2, set/3]).
 
 -record(mochiweb_socket_server,
@@ -340,6 +340,10 @@ terminate(_Reason, #mochiweb_socket_server{listen=Listen}) ->
 code_change(_OldVsn, State, _Extra) ->
     State.
 
+format_status(_Opt, [_PDict, State]) ->
+    FilteredState = maps:without([buffer], state_to_map(State)),
+    {FilteredState, #{sensitive => true}}.
+
 recycle_acceptor(Pid, State=#mochiweb_socket_server{
                         acceptor_pool=Pool,
                         acceptor_pool_size=PoolSize,
@@ -403,6 +407,13 @@ handle_info(Info, State) ->
     error_logger:info_report([{'INFO', Info}, {'State', State}]),
     {noreply, State}.
 
+state_to_map(#mochiweb_socket_server{} = State) ->
+    element(1, lists:foldl(fun(Field, {Map, Idx}) ->
+        {
+            maps:put(Field, element(Idx, State), Map),
+            Idx + 1
+        }
+    end, {#{}, 2}, record_info(fields, mochiweb_socket_server))).
 
 
 %%
